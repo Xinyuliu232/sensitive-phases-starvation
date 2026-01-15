@@ -1,9 +1,10 @@
 
+############################################################
+# Sensitive phases project
+# Reproducible paths + auto-save PNG figures
+############################################################
 
-
-### sensitive phases project data
-### Load necesseties ###
-
+### Load necessities ###
 library(ggplot2)
 library(readxl)
 library(ggthemes)
@@ -17,524 +18,576 @@ library(ggpubr)
 library(survminer)
 library(survival)
 library(ggdist)
+
 showtext_auto()
 
-setwd("~/Desktop/sensitivity_phase")
 
 
+DATA_DIR <- "data"
+FIG_DIR  <- "figures"
+dir.create(FIG_DIR, showWarnings = FALSE, recursive = TRUE)
 
-#### Define data colors and fonts used ###
-########### Adult data
+data_file <- file.path(DATA_DIR, "Worksheet_sensitive_phases_starvation_processed.csv")
+
+# save ggplot as PNG
+save_png <- function(p, filename, width = 10, height = 7, dpi = 300) {
+  out <- file.path(FIG_DIR, filename)
+  ggsave(filename = out, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  message("Saved: ", out)
+}
+
+############################################################
+# 1) Load data
+############################################################
 adultdata <- read.csv(
   "Worksheet_sensitive_phases_starvation_processed.csv",
-  sep=";",
-  header= TRUE,
-  na.strings = c("NA",""," ")
+  sep = ";",
+  header = TRUE,
+  na.strings = c("NA", "", " ")
 )
 
-treatmentscol <- c("chartreuse4", "gold","darkorange3","red" )
-sexcol <- c("bisque4", "gray10" )
-larvalcol <- c("chartreuse4", "darkorange3")
+treatmentscol <- c("chartreuse4", "gold", "darkorange3", "red")
+sexcol       <- c("bisque4", "gray10")
+larvalcol    <- c("chartreuse4", "darkorange3")
 
-### giving the general order
-adultdata$treatment <- factor(adultdata$treatment, levels = c("no", "adult", "larval", "double"))
-adultdata$larvaltreat <- factor(adultdata$larvaltreat, levels = c("no","larval"))
-# Subset data for both sexes
-adultmale_subset <- subset(adultdata, s == 'male' & !is.na(s))
-adultfemale_subset <- subset(adultdata, s == 'female' & !is.na(s))
+adultdata$treatment   <- factor(adultdata$treatment, levels = c("no", "adult", "larval", "double"))
+adultdata$larvaltreat <- factor(adultdata$larvaltreat, levels = c("no", "larval"))
 
-##general overview about n 
-summary_table_n <- table(adultdata$treatment, adultdata$s)
-summary_table_n
+adultmale_subset   <- subset(adultdata, s == "male"   & !is.na(s))
+adultfemale_subset <- subset(adultdata, s == "female" & !is.na(s))
 
-summary_table_behav <- table(adultdata$treatment, adultdata$s, complete.cases(adultdata$velocity))
-summary_table_behav
-
+############################################################
+# 2) Summary tables 
+############################################################
+summary_table_n      <- table(adultdata$treatment, adultdata$s)
+summary_table_behav  <- table(adultdata$treatment, adultdata$s, complete.cases(adultdata$velocity))
 summary_table_metabo <- table(adultdata$treatment, adultdata$s, complete.cases(adultdata$lipidmasstotal))
-summary_table_metabo
 
-####################################################################### facet wrap - s summary Distance moved
-#########changed from boxplot to dotplot
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = distancemoved, color = treatment)) +
+print(summary_table_n)
+print(summary_table_behav)
+print(summary_table_metabo)
+
+############################################################
+# 3) Plots (ALL saved as PNG)
+############################################################
+
+# Distance moved
+p_dist <- ggplot(adultdata %>% filter(!is.na(s)),
+                 aes(x = treatment, y = distancemoved, color = treatment)) +
   scale_color_manual(values = treatmentscol) +
   labs(title = "Distance moved", x = "Starvation treatment", y = "Distance moved (cm)") +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA)+
-  geom_jitter()+
-  facet_wrap(~s, scales = "fixed", ncol = 2)
-####################################################################### facet wrap
-
-####################################################################### facet wrap - s summary Immobility duration
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = immobileduration, color = treatment, )) +
-  scale_color_manual(values = treatmentscol) +
-  labs(title = "Immobility duration", x = "Starvation treatment", y = "Time spent immobile (s)") +
-  scale_y_continuous(limits = c(950,3700))+
-  theme_bw(base_size = 22) +
-  theme(legend.position = "none") +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
   geom_jitter() +
   facet_wrap(~s, scales = "fixed", ncol = 2)
-####################################################################### second version only dots
-#ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = immobileduration, color = treatment)) +
-#  scale_color_manual(values = treatmentscol) +
+
+save_png(p_dist, "adult_distance_moved_by_treatment_sex.png", width = 12, height = 7)
+
+# Immobility duration (box + jitter)
+p_immobile_box <- ggplot(adultdata %>% filter(!is.na(s)),
+                         aes(x = treatment, y = immobileduration, color = treatment)) +
+  scale_color_manual(values = treatmentscol) +
   labs(title = "Immobility duration", x = "Starvation treatment", y = "Time spent immobile (s)") +
+  scale_y_continuous(limits = c(950, 3700)) +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
-  geom_point(aes(color = treatment), size = 3, alpha = 7/10) +
-  stat_summary(geom = "point",fun = median,col = "white" ,size = 2,shape = 21, fill = "black")+
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
+  geom_jitter() +
   facet_wrap(~s, scales = "fixed", ncol = 2)
-#######################
-#################################################################################
-  #Spearman rank correlation between distance moved and immobile duration
-  #Spearman rank correlation between distance moved and immobile duration
-  calculate_spearman <- function(data) {
-    data %>%
-      filter(!is.na(distancemoved) & !is.na(immobileduration)) %>%
-      group_by(treatment) %>%
-      summarize(
-        correlation = cor(distancemoved, immobileduration, method = "spearman"),
-        p_value = cor.test(distancemoved, immobileduration, method = "spearman")$p.value
-      )
-  }
-  
-  spearman_correlations <- calculate_spearman(adultdata)
-  print(spearman_correlations)
-  spearman_correlations <- calculate_spearman(adultdata)
-  print("Spearman's rank correlation for the entire dataset:")
-  print(spearman_correlations)
 
-####################################################################### treatment body mass facet wrap
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = treatmentweight, color = treatment)) +
+save_png(p_immobile_box, "adult_immobility_duration_box_by_treatment_sex.png", width = 12, height = 7)
+
+# Immobility duration (dots + median)
+p_immobile_dots <- ggplot(adultdata %>% filter(!is.na(s)),
+                          aes(x = treatment, y = immobileduration, color = treatment)) +
+  scale_color_manual(values = treatmentscol) +
+  labs(title = "Immobility duration (dots)", x = "Starvation treatment", y = "Time spent immobile (s)") +
+  theme_bw(base_size = 22) +
+  theme(legend.position = "none") +
+  geom_point(size = 3, alpha = 0.7) +
+  stat_summary(fun = median, geom = "point", size = 2, shape = 21, fill = "black", color = "white") +
+  facet_wrap(~s, scales = "fixed", ncol = 2)
+
+save_png(p_immobile_dots, "adult_immobility_duration_dots_by_treatment_sex.png", width = 12, height = 7)
+
+# Spearman correlation 
+calculate_spearman <- function(data) {
+  data %>%
+    filter(!is.na(distancemoved) & !is.na(immobileduration)) %>%
+    group_by(treatment) %>%
+    summarize(
+      correlation = cor(distancemoved, immobileduration, method = "spearman"),
+      p_value = cor.test(distancemoved, immobileduration, method = "spearman")$p.value,
+      .groups = "drop"
+    )
+}
+spearman_correlations <- calculate_spearman(adultdata)
+print(spearman_correlations)
+
+# Treatment body mass
+p_treat_mass <- ggplot(adultdata %>% filter(!is.na(s)),
+                       aes(x = treatment, y = treatmentweight, color = treatment)) +
   scale_color_manual(values = treatmentscol) +
   labs(title = "Treatment body mass", x = "Starvation treatment", y = "Body mass (mg)") +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
   geom_jitter() +
   facet_wrap(~s, scales = "fixed", ncol = 2)
-####################################################################### facet wrap
-####################################################################### mass change
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = masschange, color = treatment)) +
+
+save_png(p_treat_mass, "adult_treatment_body_mass_by_treatment_sex.png", width = 12, height = 7)
+
+# Mass change
+p_masschange <- ggplot(adultdata %>% filter(!is.na(s)),
+                       aes(x = treatment, y = masschange, color = treatment)) +
   scale_color_manual(values = treatmentscol) +
-  scale_y_continuous(limits = c(-4.5,2.5))+
+  scale_y_continuous(limits = c(-4.5, 2.5)) +
   labs(title = "Mass change after treatment", x = "Starvation treatment", y = "Body mass change (mg)") +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
-  expand_limits(y = -2.2)+
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
+  expand_limits(y = -2.2) +
   geom_jitter() +
   facet_wrap(~s, scales = "fixed", ncol = 2)
-####################################################################### facet wrap
 
-########################################################### facet wraps lifespans and durations
-####################################################################### facet wrap - s summary
-##############adult
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = adultlifespan, color = treatment)) +
+save_png(p_masschange, "adult_mass_change_by_treatment_sex.png", width = 12, height = 7)
+
+# Adult lifespan
+p_adultlife <- ggplot(adultdata %>% filter(!is.na(s)),
+                      aes(x = treatment, y = adultlifespan, color = treatment)) +
   scale_color_manual(values = treatmentscol) +
   labs(title = "Adult lifespan", x = "Starvation treatment", y = "Lifespan (d)") +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
   geom_jitter() +
   facet_wrap(~s, scales = "fixed", ncol = 2)
-##############total
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = totallifespan, color = treatment)) +
+
+save_png(p_adultlife, "adult_lifespan_by_treatment_sex.png", width = 12, height = 7)
+
+# Total lifespan
+p_totallife <- ggplot(adultdata %>% filter(!is.na(s)),
+                      aes(x = treatment, y = totallifespan, color = treatment)) +
   scale_color_manual(values = treatmentscol) +
   labs(title = "Total lifespan", x = "Starvation treatment", y = "Lifespan (d)") +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
   geom_jitter() +
   facet_wrap(~s, scales = "fixed", ncol = 2)
 
-####################time till eonymph raincloud
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = larvaltreat, y = larvalstageduration, fill = larvaltreat, color = larvaltreat)) +
+save_png(p_totallife, "total_lifespan_by_treatment_sex.png", width = 12, height = 7)
+
+# Larval development (raincloud)
+p_larval_dev <- ggplot(adultdata %>% filter(!is.na(s)),
+                       aes(x = larvaltreat, y = larvalstageduration,
+                           fill = larvaltreat, color = larvaltreat)) +
   scale_fill_manual(values = larvalcol) +
   scale_color_manual(values = larvalcol) +
   labs(title = "Larval development", x = "Starvation treatment", y = "Time until eonymph stage (d)") +
-  scale_y_continuous(limits = c(11,17.5))+
+  scale_y_continuous(limits = c(11, 17.5)) +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_point(size = 1.5, alpha = .5, position = position_jitter(width = 0.1, height = 0.1)) + 
-  ggdist::stat_halfeye(justification = -.3, width = .8, adjust = 1, .width = 0) +
+  geom_point(size = 1.5, alpha = 0.5,
+             position = position_jitter(width = 0.1, height = 0.1)) +
+  ggdist::stat_halfeye(justification = -0.3, width = 0.8, adjust = 1, .width = 0) +
   stat_summary(fun = median, geom = "point", shape = 21, size = 3) +
   facet_wrap(~s, scales = "fixed", ncol = 2)
-##############pupalstageduration
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = larvaltreat, y = pupaestageduration, color = larvaltreat)) +
-  scale_color_manual(values=larvalcol) +
-  labs(title="Pupal stage duration",x ="Starvation treatment", y = "Days in pupal stage (d)")+
+
+save_png(p_larval_dev, "larval_development_raincloud_by_sex.png", width = 12, height = 7)
+
+# Pupal stage duration
+p_pupal <- ggplot(adultdata %>% filter(!is.na(s)),
+                  aes(x = larvaltreat, y = pupaestageduration, color = larvaltreat)) +
+  scale_color_manual(values = larvalcol) +
+  labs(title = "Pupal stage duration", x = "Starvation treatment", y = "Days in pupal stage (d)") +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_violin(aes(color = larvaltreat, fill = after_scale(desaturate(lighten(color, .6), .6))), linewidth = 1,)+
-  geom_point()+
+  geom_violin(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+              linewidth = 1) +
+  geom_point() +
   facet_wrap(~s, scales = "fixed", ncol = 2)
-###############Hatching-> eclosion body mass -> raincloud
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = larvaltreat, y = hatchingweightmg, fill = larvaltreat, color = larvaltreat)) +
+
+save_png(p_pupal, "pupal_stage_duration_violin_by_sex.png", width = 12, height = 7)
+
+# Initial adult body mass (raincloud)
+p_init_mass <- ggplot(adultdata %>% filter(!is.na(s)),
+                      aes(x = larvaltreat, y = hatchingweightmg,
+                          fill = larvaltreat, color = larvaltreat)) +
   scale_fill_manual(values = larvalcol) +
   scale_color_manual(values = larvalcol) +
   labs(title = "Initial adult body mass", x = "Starvation treatment", y = "Initial adult body mass (mg)") +
-  scale_y_continuous(limits = c(6.8,24.5))+
+  scale_y_continuous(limits = c(6.8, 24.5)) +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_point(size = 1.5, alpha = .5, position = position_jitter(seed = 1, width = .1)) + 
-  ggdist::stat_halfeye(justification = -.3, width = .6, adjust = .5, .width = 0) +
+  geom_point(size = 1.5, alpha = 0.5,
+             position = position_jitter(seed = 1, width = 0.1)) +
+  ggdist::stat_halfeye(justification = -0.3, width = 0.6, adjust = 0.5, .width = 0) +
   stat_summary(fun = median, geom = "point", shape = 21, size = 3) +
   facet_wrap(~s, scales = "fixed", ncol = 2)
 
-############################################ Kaplan meier survival
+save_png(p_init_mass, "initial_adult_body_mass_raincloud_by_sex.png", width = 12, height = 7)
 
-####################################################################### Kaplan meier females
+############################################################
+# 4) Kaplan–Meier survival (save PNG from ggsurvplot)
+############################################################
+
+# Females
 fitfemales <- survfit(Surv(adultlifespan) ~ treatment, data = adultfemale_subset)
-print(fitfemales)
-# Summary of survival curves
-summary(fitfemales)
-# Access to the sort summary table
-summary(fitfemales)$table
 
 survplotfemales <- ggsurvplot(
-  fitfemales, # survfit object with calculated statistics.
-  pval = TRUE, # show p-value of log-rank test.
-  conf.int = TRUE, # show confidence intervals for point estimaes of survival curves.
-  conf.int.style = "step", # customize style of confidence intervals
-  xlab = "Adult lifespan (d)", # customize X axis label.
+  fitfemales,
+  pval = TRUE,
+  conf.int = TRUE,
+  conf.int.style = "step",
+  xlab = "Adult lifespan (d)",
   size = 1.5,
-  xlim = c(0.9,22.5),
-  #break.time.by = 200, # break X axis in time intervals by 200.
-  ggtheme = theme_bw(), # customize plot and risk table with a theme.
-  risk.table = FALSE, # absolute number and percentage at risk.
-  risk.table.y.text.col = T,# colour risk table text annotations.
-  risk.table.y.text = FALSE,# show bars instead of names in text annotations in legend of risk table.
-  ncensor.plot = FALSE, # plot the number of censored subjects at time t
-  #surv.median.line = "hv", # add the median survival pointer.
-  legend.labs = c("No starvation", "Adult starvation","Larval starvation","Double starvation"), # change legend labels.
-  palette = c("chartreuse4", "gold","darkorange3","red" ))
-survplotfemales
+  xlim = c(0.9, 22.5),
+  ggtheme = theme_bw(),
+  risk.table = FALSE,
+  risk.table.y.text.col = TRUE,
+  risk.table.y.text = FALSE,
+  ncensor.plot = FALSE,
+  legend.labs = c("No starvation", "Adult starvation", "Larval starvation", "Double starvation"),
+  palette = c("chartreuse4", "gold", "darkorange3", "red")
+)
 
-surv_difffemales <- survdiff(Surv(adultlifespan) ~ treatment, 
-                      data = adultfemale_subset)
-surv_difffemales
+save_png(survplotfemales$plot, "KM_females_adult_lifespan.png", width = 10, height = 7)
 
-#Multiple Comparisons of Survival Curves with BH correction
-resfemales<-pairwise_survdiff(Surv(adultlifespan) ~ treatment,
-                       data = adultfemale_subset,
-                       p.adjust.method = "BH", rho = 0)
-resfemales
+surv_difffemales <- survdiff(Surv(adultlifespan) ~ treatment, data = adultfemale_subset)
+print(surv_difffemales)
 
+resfemales <- pairwise_survdiff(Surv(adultlifespan) ~ treatment,
+                                data = adultfemale_subset,
+                                p.adjust.method = "BH", rho = 0)
+print(resfemales)
 
-####################################################################### Kaplan meier males
+# Males
 fitmales <- survfit(Surv(adultlifespan) ~ treatment, data = adultmale_subset)
-print(fitmales)
-# Summary of survival curves
-summary(fitmales)
-# Access to the sort summary table
-summary(fitmales)$table
 
 survplotmales <- ggsurvplot(
-  fitmales, # survfit object with calculated statistics.
-  pval = TRUE, # show p-value of log-rank test.
-  conf.int = TRUE, # show confidence intervals for point estimaes of survival curves.
-  conf.int.style = "step", # customize style of confidence intervals
-  xlab = "Adult lifespan (d)", # customize X axis label.
+  fitmales,
+  pval = TRUE,
+  conf.int = TRUE,
+  conf.int.style = "step",
+  xlab = "Adult lifespan (d)",
   size = 1.5,
-  xlim = c(0.9,22.5),
-  #break.time.by = 200, # break X axis in time intervals by 200.
-  ggtheme = theme_bw(), # customize plot and risk table with a theme.
-  risk.table = FALSE, # absolute number and percentage at risk.
-  risk.table.y.text.col = T,# colour risk table text annotations.
-  risk.table.y.text = FALSE,# show bars instead of names in text annotations in legend of risk table.
-  ncensor.plot = FALSE, # plot the number of censored subjects at time t
-  #surv.median.line = "hv", # add the median survival pointer.
-  legend.labs = c("No starvation", "Adult starvation","Larval starvation","Double starvation"), # change legend labels.
-  palette = c("chartreuse4", "gold","darkorange3","red" ))
-survplotmales
+  xlim = c(0.9, 22.5),
+  ggtheme = theme_bw(),
+  risk.table = FALSE,
+  risk.table.y.text.col = TRUE,
+  risk.table.y.text = FALSE,
+  ncensor.plot = FALSE,
+  legend.labs = c("No starvation", "Adult starvation", "Larval starvation", "Double starvation"),
+  palette = c("chartreuse4", "gold", "darkorange3", "red")
+)
 
-surv_diffmales <- survdiff(Surv(adultlifespan) ~ treatment, 
-                             data = adultmale_subset)
-surv_diffmales
+save_png(survplotmales$plot, "KM_males_adult_lifespan.png", width = 10, height = 7)
 
-#Multiple Comparisons of Survival Curves with BH correction
-resmales<-pairwise_survdiff(Surv(adultlifespan) ~ treatment,
+surv_diffmales <- survdiff(Surv(adultlifespan) ~ treatment, data = adultmale_subset)
+print(surv_diffmales)
+
+resmales <- pairwise_survdiff(Surv(adultlifespan) ~ treatment,
                               data = adultmale_subset,
                               p.adjust.method = "BH", rho = 0)
-resmales
+print(resmales)
 
+############################################################
+# 5) Metabolism plots (save PNG)
+############################################################
 
-#######################################################################
-####################                Metabolism
-####################################################################### facet wrap lipids and carbs
-##############lipids mass total
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = lipidmasstotal, color = treatment)) +
+p_lipids_total <- ggplot(adultdata %>% filter(!is.na(s)),
+                         aes(x = treatment, y = lipidmasstotal, color = treatment)) +
   scale_color_manual(values = treatmentscol) +
-  labs(title = "lipid mass per individual", x = "Starvation treatment", y = "Lipids (mg)") +
+  labs(title = "Lipid mass per individual", x = "Starvation treatment", y = "Lipids (mg)") +
   theme_bw(base_size = 22) +
   theme(legend.position = "none") +
   theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
-  geom_jitter() +
-  facet_wrap(~s, scales = "fixed", ncol = 2)
-##############lipids mass per mg bodyweight
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = lipidmgmgbodymass, color = treatment)) +
-  scale_color_manual(values = treatmentscol) +
-  labs(title = "lipid mass per body mass", x = "Starvation treatment", y = "Lipid mass per body mass (mg/mg)") +
-  theme_bw(base_size = 22) +
-  theme(legend.position = "none") +
-  theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
-  geom_jitter() +
-  facet_wrap(~s, scales = "fixed", ncol = 2)
-######################################################carbs
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = carbsmasstotal, color = treatment)) +
-  scale_color_manual(values = treatmentscol) +
-  labs(title = "carbs mass per individual", x = "Starvation treatment", y = "Total carbs (mg)") +
-  theme_bw(base_size = 22) +
-  theme(legend.position = "none") +
-  theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
-  geom_jitter() +
-  facet_wrap(~s, scales = "fixed", ncol = 2)
-##############carbs mass per mg bodyweight
-ggplot(adultdata %>% filter(!is.na(s)), aes(x = treatment, y = carbsmgmgbodymass, color = treatment)) +
-  scale_color_manual(values = treatmentscol) +
-  labs(title = "carbs mass per body mass", x = "Starvation treatment", y = "Carb. mass per body mass (mg/mg)") +
-  theme_bw(base_size = 22) +
-  theme(legend.position = "none") +
-  theme(text = element_text(family = "Calibri")) +
-  geom_boxplot(aes(color = treatment, fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
   geom_jitter() +
   facet_wrap(~s, scales = "fixed", ncol = 2)
 
-############################Metabolism extra plots where females are only dots because of low sample size
-###################lipids
-ggplot(mapping = aes(x = treatment, y = lipidmgmgbodymass, color = treatment)) +
-  # Male Boxplots
-  geom_boxplot(data = adultmale_subset, aes(fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
-  geom_jitter(data = adultmale_subset)+
-  # Female Jitter with median
-  geom_jitter(data = adultfemale_subset, width = 0.2, aes(y = lipidmgmgbodymass), size = 2) +
-  stat_summary(data = adultfemale_subset, fun = median, geom = "point", color= "black", size = 1.5, alpha = 7/10) +
-  # Global aesthetics and settings
+save_png(p_lipids_total, "lipids_mass_total_by_treatment_sex.png", width = 12, height = 7)
+
+p_lipids_permass <- ggplot(adultdata %>% filter(!is.na(s)),
+                           aes(x = treatment, y = lipidmgmgbodymass, color = treatment)) +
+  scale_color_manual(values = treatmentscol) +
+  labs(title = "Lipid mass per body mass", x = "Starvation treatment", y = "Lipid mass per body mass (mg/mg)") +
+  theme_bw(base_size = 22) +
+  theme(legend.position = "none") +
+  theme(text = element_text(family = "Calibri")) +
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
+  geom_jitter() +
+  facet_wrap(~s, scales = "fixed", ncol = 2)
+
+save_png(p_lipids_permass, "lipids_per_body_mass_by_treatment_sex.png", width = 12, height = 7)
+
+p_carbs_total <- ggplot(adultdata %>% filter(!is.na(s)),
+                        aes(x = treatment, y = carbsmasstotal, color = treatment)) +
+  scale_color_manual(values = treatmentscol) +
+  labs(title = "Carbs mass per individual", x = "Starvation treatment", y = "Total carbs (mg)") +
+  theme_bw(base_size = 22) +
+  theme(legend.position = "none") +
+  theme(text = element_text(family = "Calibri")) +
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
+  geom_jitter() +
+  facet_wrap(~s, scales = "fixed", ncol = 2)
+
+save_png(p_carbs_total, "carbs_mass_total_by_treatment_sex.png", width = 12, height = 7)
+
+p_carbs_permass <- ggplot(adultdata %>% filter(!is.na(s)),
+  aes(x = treatment, y = carbsmgmgbodymass, color = treatment)) +
+  scale_color_manual(values = treatmentscol) +
+  labs(title = "Carbs mass per body mass", x = "Starvation treatment", y = "Carb. mass per body mass (mg/mg)") +
+  theme_bw(base_size = 22) +
+  theme(legend.position = "none") +
+  theme(text = element_text(family = "Calibri")) +
+  geom_boxplot(aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
+  geom_jitter() +
+  facet_wrap(~s, scales = "fixed", ncol = 2)
+
+save_png(p_carbs_permass, "carbs_per_body_mass_by_treatment_sex.png", width = 12, height = 7)
+
+# Metabolism extra (male box + female dots)
+p_lipids_extra <- ggplot(mapping = aes(x = treatment, y = lipidmgmgbodymass, color = treatment)) +
+  geom_boxplot(data = adultmale_subset,
+               aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
+  geom_jitter(data = adultmale_subset) +
+  geom_jitter(data = adultfemale_subset, width = 0.2, size = 2) +
+  stat_summary(data = adultfemale_subset, fun = median, geom = "point",
+               color = "black", size = 1.5, alpha = 0.7) +
   scale_color_manual(values = treatmentscol) +
   scale_fill_manual(values = treatmentscol) +
-  scale_y_continuous(limits = c(0.0,1.17))+
+  scale_y_continuous(limits = c(0.0, 1.17)) +
   labs(title = "Lipid mass per body mass", x = "Starvation treatment", y = "Lipid mass per body mass (mg/mg)") +
   theme_bw(base_size = 22) +
   theme(text = element_text(family = "Calibri")) +
   theme(legend.position = "none") +
   facet_wrap(~s, scales = "fixed", ncol = 2)
 
-####################carbs
-ggplot(mapping = aes(x = treatment, y = carbsmgmgbodymass, color = treatment)) +
-  # Male Boxplots
-  geom_boxplot(data = adultmale_subset, aes(fill = after_scale(desaturate(lighten(color, .6), .6))), size = 1, outlier.shape = NA) +
-  geom_jitter(data = adultmale_subset)+
-  # Female Jitter with median
-  geom_jitter(data = adultfemale_subset, width = 0.2, aes(y = carbsmgmgbodymass), size = 2) +
-  stat_summary(data = adultfemale_subset, fun = median, geom = "point", color= "black", size = 1.5, alpha = 7/10) +
-  # Global aesthetics and settings
+save_png(p_lipids_extra, "lipids_per_body_mass_male_box_female_dots.png", width = 12, height = 7)
+
+p_carbs_extra <- ggplot(mapping = aes(x = treatment, y = carbsmgmgbodymass, color = treatment)) +
+  geom_boxplot(data = adultmale_subset,
+               aes(fill = after_scale(desaturate(lighten(color, .6), .6))),
+               size = 1, outlier.shape = NA) +
+  geom_jitter(data = adultmale_subset) +
+  geom_jitter(data = adultfemale_subset, width = 0.2, size = 2) +
+  stat_summary(data = adultfemale_subset, fun = median, geom = "point",
+               color = "black", size = 1.5, alpha = 0.7) +
   scale_color_manual(values = treatmentscol) +
   scale_fill_manual(values = treatmentscol) +
-  scale_y_continuous(limits = c(0.0,0.105))+
+  scale_y_continuous(limits = c(0.0, 0.105)) +
   labs(title = "Carbs mass per body mass", x = "Starvation treatment", y = "Carb. mass per body mass (mg/mg)") +
   theme_bw(base_size = 22) +
   theme(text = element_text(family = "Calibri")) +
   theme(legend.position = "none") +
   facet_wrap(~s, scales = "fixed", ncol = 2)
 
-###############################################################
+save_png(p_carbs_extra, "carbs_per_body_mass_male_box_female_dots.png", width = 12, height = 7)
+########################################################
+################ AUTOMATED STATISTICAL TESTING #########
+########################################################
 
-########################################################    TESTING    #######################################################
-##############################Larvalstage##########
-###  testing for differences in larval developmental time 
-#wilcoxon - mann-whitney u for two treatments -> larval
+library(dplyr)
+library(dunn.test)
+library(multcompView)
+library(stringr)
 
-# Perform Wilcoxon rank sum test for males
-test_larvaldevelop_male <- wilcox.test(adultmale_subset$larvalstageduration ~ adultmale_subset$larvaltreat, mu = 0, alternative = "two.sided",exact = FALSE)
-# Perform Wilcoxon rank sum test for females
-test_larvaldevelop_female <- wilcox.test(adultfemale_subset$larvalstageduration ~ adultfemale_subset$larvaltreat, mu = 0, alternative = "two.sided",exact = FALSE)
+# Create output directory
+dir.create("results", showWarnings = FALSE)
 
-print(test_larvaldevelop_male)
-print(test_larvaldevelop_female)
+########################################################
+# 1) Helper functions to tidy test outputs
+########################################################
 
-###  testing for differences in hatching body mass
-# Perform Wilcoxon rank sum test for males
-test_hatchingweightmg_male <- wilcox.test(adultmale_subset$hatchingweightmg ~ adultmale_subset$larvaltreat, mu = 0, alternative = "two.sided",exact = FALSE)
-# Perform Wilcoxon rank sum test for females
-test_hatchingweightmg_female <- wilcox.test(adultfemale_subset$hatchingweightmg ~ adultfemale_subset$larvaltreat, mu = 0, alternative = "two.sided",exact = FALSE)
-
-print(test_hatchingweightmg_male)
-print(test_hatchingweightmg_female)
-
-######################################################adult stage testing####################
-###Kruskal wallis for four treatments + posthoc testing
-#######treatment body mass
-"treatmentbodymass (treatmentweight)"
-# Perform kruskal test for males
-test_treatmentweight_male <- kruskal.test(adultmale_subset$treatmentweight ~ adultmale_subset$treatment)
-# posthoc
-posthoc_treatmentweight_male <- dunn.test(adultmale_subset$treatmentweight, g = adultmale_subset$treatment, method = "bonferroni")
-
-# Perform kruskal test for females
-test_treatmentweight_female <- kruskal.test(adultfemale_subset$treatmentweight ~ adultfemale_subset$treatment)
-# posthoc
-posthoc_treatmentweight_female <- dunn.test(adultfemale_subset$treatmentweight, g = adultfemale_subset$treatment, method = "bonferroni")
-
-print(test_treatmentweight_male)
-print(test_treatmentweight_female)
-print(posthoc_treatmentweight_male)
-print(posthoc_treatmentweight_female)
-
-
-####### mass change
-"masschange"
-# Perform kruskal test for males
-test_masschange_male <- kruskal.test(adultmale_subset$masschange ~ adultmale_subset$treatment)
-# posthoc
-posthoc_masschange_male <- dunn.test(adultmale_subset$masschange, g = adultmale_subset$treatment, method = "bonferroni")
-
-# Perform kruskal test for females
-test_masschange_female <- kruskal.test(adultfemale_subset$masschange ~ adultfemale_subset$treatment)
-# posthoc
-posthoc_masschange_female <- dunn.test(adultfemale_subset$masschange, g = adultfemale_subset$treatment, method = "bonferroni")
-
-print(test_masschange_male)
-print(test_masschange_female)
-print(posthoc_masschange_male)
-print(posthoc_masschange_female)
-
-
-######### total lifespan
-"total lifespan"
-# Perform kruskal test for males
-test_totallifespan_male <- kruskal.test(adultmale_subset$totallifespan ~ adultmale_subset$treatment)
-posthoc_totallifespan_male <- dunn.test(adultmale_subset$totallifespan, g = adultmale_subset$treatment, method = "bonferroni")
-# Perform kruskal test for females
-test_totallifespan_female <- kruskal.test(adultfemale_subset$totallifespan ~ adultfemale_subset$treatment)
-posthoc_totallifespan_female <- dunn.test(adultfemale_subset$totallifespan, g = adultfemale_subset$treatment, method = "bonferroni")
-
-print(test_totallifespan_male)
-print(test_totallifespan_female)
-print(posthoc_totallifespan_male)
-print(posthoc_totallifespan_female)
-
-
-######### adult lifespan
-test_adultlifespan_male <- kruskal.test(adultmale_subset$adultlifespan ~ adultmale_subset$treatment)
-# Perform kruskal test for females
-test_adultlifespan_female <- kruskal.test(adultfemale_subset$adultlifespan ~ adultfemale_subset$treatment)
-
-print(test_adultlifespan_male)
-print(test_adultlifespan_female)
-
-
-######### distance moved
-"distance moved"
-test_distancemoved_male <- kruskal.test(adultmale_subset$distancemoved ~ adultmale_subset$treatment)
-posthoc_distancemoved_male <- dunn.test(adultmale_subset$distancemoved, g = adultmale_subset$treatment, method = "bonferroni")
-# Perform kruskal test for females
-test_distancemoved_female <- kruskal.test(adultfemale_subset$distancemoved ~ adultfemale_subset$treatment)
-posthoc_distancemoved_female <- dunn.test(adultfemale_subset$distancemoved, g = adultfemale_subset$treatment, method = "bonferroni")
-
-print(test_distancemoved_male)
-print(test_distancemoved_female)
-print(posthoc_distancemoved_male)
-print(posthoc_distancemoved_female)
-
-
-
-######### immobileduration
-test_immobileduration_male <- kruskal.test(adultmale_subset$immobileduration ~ adultmale_subset$treatment)
-# Perform kruskal test for females
-test_immobileduration_female <- kruskal.test(adultfemale_subset$immobileduration ~ adultfemale_subset$treatment)
-
-print(test_immobileduration_male)
-print(test_immobileduration_female)
-
-
-######### lipids per mg body mass 
-"lipids per mg body mass"
-test_lipidsper_male <- kruskal.test(adultmale_subset$lipidmgmgbodymass ~ adultmale_subset$treatment)
-posthoc_lipidsper_male <- dunn.test(adultmale_subset$lipidmgmgbodymass, g = adultmale_subset$treatment, method = "bonferroni")
-# Perform kruskal test for females
-test_lipidsper_female <- kruskal.test(adultfemale_subset$lipidmgmgbodymass ~ adultfemale_subset$treatment)
-posthoc_lipidsper_female <- dunn.test(adultfemale_subset$lipidmgmgbodymass, g = adultfemale_subset$treatment, method = "bonferroni")
-
-print(test_lipidsper_male)
-print(test_lipidsper_female)
-print(posthoc_lipidsper_male)
-print(posthoc_lipidsper_female)
-
-
-######### carbs per mg body mass
-"carbs per mg body mass"
-test_carbsper_male <- kruskal.test(adultmale_subset$carbsmgmgbodymass ~ adultmale_subset$treatment)
-posthoc_carbsper_male <- dunn.test(adultmale_subset$carbsmgmgbodymass, g = adultmale_subset$treatment, method = "bonferroni")
-# Perform kruskal test for females
-test_carbsper_female <- kruskal.test(adultfemale_subset$carbsmgmgbodymass ~ adultfemale_subset$treatment)
-posthoc_carbsper_female <- dunn.test(adultfemale_subset$carbsmgmgbodymass, g = adultfemale_subset$treatment, method = "bonferroni")
-
-print(test_carbsper_male)
-print(test_carbsper_female)
-print(posthoc_carbsper_male)
-print(posthoc_carbsper_female)
-
-
-##### Calculating letters for significance in boxplots ### thanks to dr dozi
-
-calculate_multcompletters <- function(posthoctestresults){
-  reformatted.posthoc <- posthoctestresults %>%
-    as.data.frame() %>%
-    mutate(significant = if_else(P.adjusted >= 0.05, 1, 0),
-           comparisons = str_remove_all(comparisons, " ")) 
-
-  
-  prepare.vector.multcomp <- as.vector(reformatted.posthoc$significant) %>%
-    setNames(reformatted.posthoc$comparisons)
-  
-  get.multcomp.letters <- multcompLetters(prepare.vector.multcomp) %>%
-    return(.)
+# Wilcoxon rank-sum test (2 groups)
+tidy_wilcox <- function(test, variable, sex) {
+  data.frame(
+    variable = variable,
+    sex = sex,
+    test = "Wilcoxon rank-sum",
+    statistic = as.numeric(test$statistic),
+    p_value = test$p.value,
+    stringsAsFactors = FALSE
+  )
 }
 
-###treatmentweight
-letters_treatmentweightfem <- calculate_multcompletters(posthoc_treatmentweight_female) %>%
-  print(.)
-letters_treatmentweightma <- calculate_multcompletters(posthoc_treatmentweight_male) %>%
-  print(.)
+# Kruskal–Wallis test (4 groups)
+tidy_kruskal <- function(test, variable, sex) {
+  data.frame(
+    variable = variable,
+    sex = sex,
+    test = "Kruskal-Wallis",
+    statistic = as.numeric(test$statistic),
+    df = as.numeric(test$parameter),
+    p_value = test$p.value,
+    stringsAsFactors = FALSE
+  )
+}
+
+# Dunn post hoc test
+tidy_dunn <- function(dunn_obj, variable, sex) {
+  data.frame(
+    variable = variable,
+    sex = sex,
+    comparison = dunn_obj$comparisons,
+    Z = dunn_obj$Z,
+    p_unadjusted = dunn_obj$P,
+    p_adjusted = dunn_obj$P.adjusted,
+    stringsAsFactors = FALSE
+  )
+}
+
+# Convert Dunn test results to compact letter display
+calculate_letters <- function(dunn_obj, variable, sex) {
+  
+  df <- dunn_obj %>%
+    as.data.frame() %>%
+    mutate(
+      significant = if_else(P.adjusted >= 0.05, 1, 0),
+      comparisons = str_remove_all(comparisons, " ")
+    )
+  
+  letter_vector <- setNames(df$significant, df$comparisons)
+  letters <- multcompLetters(letter_vector)
+  
+  data.frame(
+    variable = variable,
+    sex = sex,
+    treatment = names(letters$Letters),
+    letter = letters$Letters,
+    stringsAsFactors = FALSE
+  )
+}
+
+########################################################
+# 2) Data containers and test configuration
+########################################################
+
+# Split data by sex
+df_clean <- adultdata %>% filter(!is.na(s))
+
+sex_data <- split(df_clean, df_clean$s)
 
 
-###masschange
-letters_masschangefem <- calculate_multcompletters(posthoc_masschange_female) %>%
-  print(.)
-letters_masschangema <- calculate_multcompletters(posthoc_masschange_male) %>%
-  print(.)
 
+# Variables tested with Wilcoxon (2 larval treatments)
+wilcox_vars <- list(
+  larvalstageduration = "larvaltreat",
+  hatchingweightmg    = "larvaltreat"
+)
 
-###masschange
-letters_totallifespanfem <- calculate_multcompletters(posthoc_totallifespan_female) %>%
-  print(.)
-letters_totallifespanma <- calculate_multcompletters(posthoc_totallifespan_male) %>%
-  print(.)
+# Variables tested with Kruskal–Wallis + Dunn (4 treatments)
+kruskal_vars <- c(
+  "treatmentweight",
+  "masschange",
+  "totallifespan",
+  "adultlifespan",
+  "distancemoved",
+  "immobileduration",
+  "lipidmgmgbodymass",
+  "carbsmgmgbodymass"
+)
 
+########################################################
+# 3) Run all tests automatically
+########################################################
 
-###lipidsper
-letters_lipidsperfem <- calculate_multcompletters(posthoc_lipidsper_female) %>%
-  print(.)
-letters_lipidsperma <- calculate_multcompletters(posthoc_lipidsper_male) %>%
-  print(.)
+overall_results <- list()
+posthoc_results <- list()
+letters_results <- list()
 
+### ---- Wilcoxon tests ---- ###
+for (sex in names(sex_data)) {
+  
+  df <- sex_data[[sex]]
+  
+  for (var in names(wilcox_vars)) {
+    
+    grouping_var <- wilcox_vars[[var]]
+    
+    test <- wilcox.test(
+      df[[var]] ~ df[[grouping_var]],
+      exact = FALSE
+    )
+    
+    overall_results[[paste(var, sex, sep = "_")]] <-
+      tidy_wilcox(test, var, sex)
+  }
+}
 
-###carbsper
-letters_carbsperfem <- calculate_multcompletters(posthoc_carbsper_female) %>%
-  print(.)
-letters_carbsperma <- calculate_multcompletters(posthoc_carbsper_male) %>%
-  print(.)
-#########################################################################################################################
+### ---- Kruskal–Wallis + Dunn tests ---- ###
+for (sex in names(sex_data)) {
+  
+  df <- sex_data[[sex]]
+  
+  for (var in kruskal_vars) {
+    
+    # Kruskal–Wallis test
+    kw_test <- kruskal.test(df[[var]] ~ df$treatment)
+    
+    overall_results[[paste(var, sex, sep = "_")]] <-
+      tidy_kruskal(kw_test, var, sex)
+    
+    # Dunn post hoc test
+    dunn_test <- dunn.test(
+      x = df[[var]],
+      g = df$treatment,
+      method = "bonferroni"
+    )
+    
+    posthoc_results[[paste(var, sex, sep = "_")]] <-
+      tidy_dunn(dunn_test, var, sex)
+    
+    letters_results[[paste(var, sex, sep = "_")]] <-
+      calculate_letters(dunn_test, var, sex)
+  }
+}
+
+########################################################
+# 4) Combine results and save to files
+########################################################
+
+overall_df <- bind_rows(overall_results)
+posthoc_df <- bind_rows(posthoc_results)
+letters_df <- bind_rows(letters_results)
+
+write.csv(
+  overall_df,
+  "results/overall_tests_summary.csv",
+  row.names = FALSE
+)
+
+write.csv(
+  posthoc_df,
+  "results/posthoc_dunn_tests.csv",
+  row.names = FALSE
+)
+
+write.csv(
+  letters_df,
+  "results/significance_letters.csv",
+  row.names = FALSE
+)
 

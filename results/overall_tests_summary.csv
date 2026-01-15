@@ -1,0 +1,21 @@
+"variable","sex","test","statistic","p_value","df"
+"larvalstageduration","female","Wilcoxon rank-sum",24,6.24995254299678e-08,NA
+"hatchingweightmg","female","Wilcoxon rank-sum",366,0.0193344731363898,NA
+"larvalstageduration","male","Wilcoxon rank-sum",66,5.14710676553763e-11,NA
+"hatchingweightmg","male","Wilcoxon rank-sum",662,0.548250916625243,NA
+"treatmentweight","female","Kruskal-Wallis",20.7887594782848,0.000116463530971672,3
+"masschange","female","Kruskal-Wallis",24.2172073526967,2.25028455079475e-05,3
+"totallifespan","female","Kruskal-Wallis",10.6987434889096,0.0134715731113871,3
+"adultlifespan","female","Kruskal-Wallis",2.97274616917473,0.395846296383796,3
+"distancemoved","female","Kruskal-Wallis",4.4163961038961,0.219869894541475,3
+"immobileduration","female","Kruskal-Wallis",5.70194805194805,0.127046622548306,3
+"lipidmgmgbodymass","female","Kruskal-Wallis",3.1221052631579,0.373179401925513,3
+"carbsmgmgbodymass","female","Kruskal-Wallis",7.90789473684211,0.0479540949357769,3
+"treatmentweight","male","Kruskal-Wallis",4.36433836237278,0.224714916170163,3
+"masschange","male","Kruskal-Wallis",4.62688679854012,0.201247693213388,3
+"totallifespan","male","Kruskal-Wallis",7.16412490922294,0.0668465193966585,3
+"adultlifespan","male","Kruskal-Wallis",6.04046157780334,0.109658189709892,3
+"distancemoved","male","Kruskal-Wallis",0.547004064311778,0.908449910180657,3
+"immobileduration","male","Kruskal-Wallis",0.273438525847925,0.96494403417297,3
+"lipidmgmgbodymass","male","Kruskal-Wallis",12.7932298595713,0.00510577912646343,3
+"carbsmgmgbodymass","male","Kruskal-Wallis",9.04569934662821,0.0286894189272706,3
