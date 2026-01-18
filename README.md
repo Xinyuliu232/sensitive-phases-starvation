@@ -1,64 +1,197 @@
-Sensitive phases of starvation
+# Sensitive phases of starvation
 
-This repository contains the analysis code and results for a project examining how starvation at different developmental stages affects later behavioral and metabolic traits.
+This repository contains the analysis code and results for a project examining how starvation at different developmental stages affects behavioral and metabolic traits.
 
-The main goal of this project is to test whether starvation exposure during specific life stages leads to long-term effects, and whether these effects differ by sex.
+The primary goal of this project is to evaluate whether the **timing of starvation exposure**, rather than starvation itself, leads to long-term phenotypic differences, and whether these effects differ by sex.
 
-Project background
+This repository focuses on **comparative statistical analysis and visualization**, not predictive modeling.
 
-Early-life nutritional stress is known to influence adult physiology and behavior, but the timing of exposure may be critical.
-In this project, starvation was applied at different developmental phases to evaluate potential sensitive windows.
+---
 
-The analysis focuses on comparing phenotypic outcomes across treatments rather than building predictive models.
+## 1) Project background
 
-Experimental design
+Early-life nutritional stress is known to influence adult physiology and behavior, but accumulating evidence suggests that organisms may respond differently depending on **when** the stress occurs.
 
-Starvation treatments include:
+In this project, starvation was applied at different developmental phases to test the presence of potential **sensitive windows**, defined as periods during which starvation exposure produces disproportionately large or persistent effects.
 
-no starvation (control)
+The analysis addresses two main questions:
 
-larval starvation
+1. Does starvation at different developmental stages lead to distinct behavioral or metabolic outcomes?
+2. Are these effects sex-specific?
 
-adult starvation
+---
 
-double starvation (larval + adult)
+## 2) Experimental design
 
-Both males and females were analyzed, and most analyses were conducted separately by sex.
+### 2.1 Starvation treatments
 
-Measured outcomes include behavioral traits (e.g. distance moved, immobility duration) and energy-related traits (lipids, carbohydrates).
+Four treatment groups were included:
 
+* no starvation (control)
+* larval starvation
+* adult starvation
+* double starvation (larval + adult)
 
+These treatments allow comparison between:
+
+* early vs late exposure
+* single-stage vs double exposure
+* absence vs presence of starvation
+
+---
+
+### 2.2 Sex stratification
+
+Both males and females were included in the experiment.
+
+Because preliminary exploration suggested sex-dependent variability, most analyses were conducted **separately by sex**, rather than including sex only as a covariate.
+
+---
+
+### 2.3 Phenotypic outcomes
+
+Measured traits include:
+
+Behavioral traits:
+
+* distance moved
+* immobility duration
+
+Metabolic traits:
+
+* lipid content
+* carbohydrate content
+
+All traits were analyzed as continuous outcomes.
+
+---
+
+## 3) Input data
+
+### Processed dataset
+
+All analyses use the processed dataset:
+
+```
+Worksheet_sensitive_phases_starvation_processed.csv
+```
+
+The dataset contains:
+
+* individual-level measurements
+* treatment group labels
+* sex information
+* behavioral and metabolic trait values
+
+Raw experimental data are not included in this repository.
+
+---
+
+## 4) Analysis workflow
 
 All analyses were performed in R.
 
-The workflow includes:
+The workflow follows a consistent structure across traits and sexes to ensure comparability.
 
-data cleaning and formatting
+---
 
-grouping by starvation treatment
+### 4.1 Data cleaning and formatting
 
-sex-specific subset analyses
+Steps include:
 
-group comparisons across treatments
+* removal of missing values when required
+* conversion of treatment variables to factors
+* consistent ordering of treatment levels
+* separation of datasets by sex when applicable
 
-post-hoc multiple comparisons when applicable
+No transformation was applied unless required by the statistical test.
 
-visualization using ggplot2
+---
 
-Both boxplots and dot plots were used to show group distributions and individual variation.
+### 4.2 Group-based comparisons
 
-Reproducing the analysis
+For each trait, comparisons were performed across starvation treatments.
 
-To reproduce the analysis, place all files in the same directory and run:
+Depending on data characteristics, analyses include:
 
+* non-parametric tests for group differences
+* pairwise post-hoc comparisons
+* multiple-comparison adjustment
+
+The goal is to identify **which developmental-stage starvation differs from control and from each other**, rather than testing a single global effect.
+
+---
+
+### 4.3 Sex-specific analyses
+
+Analyses were typically conducted as:
+
+* female-only subset
+* male-only subset
+
+This avoids assuming identical response patterns across sexes and allows direct visual comparison of treatment effects.
+
+---
+
+### 4.4 Visualization strategy
+
+Plots were generated using `ggplot2`.
+
+Visualization choices were made to emphasize both:
+
+* group-level trends
+* individual-level variation
+
+Figures include:
+
+* boxplots summarizing group distributions
+* overlaid individual data points
+* median indicators
+* faceting by sex when appropriate
+
+All figures are saved automatically to the `figures/` directory.
+
+---
+
+## 5) Statistical output
+
+Statistical test results and post-hoc comparisons are saved to the `results/` directory.
+
+These outputs are intended to accompany figures rather than replace them.
+
+The analysis emphasizes **effect patterns across treatments** rather than binary significance interpretation.
+
+---
+
+## 6) Reproducing the analysis
+
+To reproduce the analysis:
+
+1. Place all files in the same directory
+2. Open R
+3. Run:
+
+```r
 source("SensitivePhasesProject_script.R")
+```
 
-The script will generate figures and statistical outputs saved in the corresponding folders.
+The script will:
 
-Notes
+* load the processed dataset
+* perform all analyses
+* generate figures
+* write statistical results to disk
 
-This repository contains processed data only.
+---
 
-The purpose of this project is exploratory and descriptive.
+## 7) Notes and limitations
 
-Some intermediate objects are stored in .RData for convenience.
+* This repository contains processed data only.
+* No causal inference is claimed.
+* Sample size differs across treatments, which may influence power.
+* Some intermediate objects are stored in `.RData` for convenience.
+
+---
+
+
+
