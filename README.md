@@ -27,24 +27,7 @@ Both males and females were analyzed, and most analyses were conducted separatel
 
 Measured outcomes include behavioral traits (e.g. distance moved, immobility duration) and energy-related traits (lipids, carbohydrates).
 
-Repository structure
-sensitive-phases-starvation/
-│
-├── SensitivePhasesProject_script.R
-│   Main analysis script
-│
-├── Worksheet_sensitive_phases_starvation_processed.csv
-│   Processed dataset used for analysis
-│
-├── figures/
-│   Generated plots
-│
-├── results/
-│   Statistical test outputs
-│
-├── .RData
-│   Saved workspace for reproducibility
-Analysis overview
+
 
 All analyses were performed in R.
 
